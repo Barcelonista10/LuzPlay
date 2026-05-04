@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Player - GolStream</title>
+
+<!-- HLS.js para streams m3u8 -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<style>
+  :root {
+    --gold: #f5c518;
+    --blue: #1a3a8f;
+    --dark: #0a0a0f;
+    --red: #e8001c;
+    --white: #ffffff;
+    --surface: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--dark);
+    color: var(--white);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+  }
+
+  /* ── WRAPPER PRINCIPAL ── */
+  #player-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── VIDEO NATIVO (HLS / MP4) ── */
+  #video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none;
+    background: #000;
+  }
+
+  /* ── IFRAME (embed) ── */
+  #iframe-player {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: none;
+  }
+
+  /* ── OVERLAY DE CARGA ── */
+  #loader {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, #0d1a3a 0%, #000 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    z-index: 10;
+    transition: opacity 0.5s ease;
+  }
+
+  #loader.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .loader-logo {
+    width: 120px;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 0 20px rgba(245,197,24,0.6));
+    animation: logo-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes logo-glow {
+    0%, 100% { filter: drop-shadow(0 0 12px rgba(245,197,24,0.4)); }
+    50%       { filter: drop-shadow(0 0 30px rgba(245,197,24,1)); }
+  }
+
+  .spinner {
+    width: 44px; height: 44px;
+    border: 3px solid rgba(245,197,24,0.2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loader-text {
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+  }
+
+  /* ── PANTALLA DE ERROR ── */
+  #error-screen {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, #1a0000 0%, #000 100%);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 20;
+    text-align: center;
+    padding: 30px;
+  }
+
+  #error-screen.visible { display: flex; }
+
+  .error-icon { font-size: 48px; }
+
+  .error-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--red);
+  }
+
+  .error-msg {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    max-width: 280px;
+    line-height: 1.6;
+  }
+
+  .btn-retry {
+    margin-top: 8px;
+    background: var(--blue);
+    color: white;
+    border: none;
+    padding: 10px 28px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-retry:hover { background: #2250cc; }
+
+  /* ── CONTROLES CUSTOM ── */
+  #controls {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+    padding: 40px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 30;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  #player-container:hover #controls,
+  #player-container.show-controls #controls {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* Barra de progreso (solo MP4) */
+  #progress-wrap {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    cursor: pointer;
+    display: none;
+  }
+
+  #progress-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.3s linear;
+  }
+
+  .controls-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ctrl-btn {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.85;
+    transition: opacity 0.2s, transform 0.15s;
+    flex-shrink: 0;
+  }
+  .ctrl-btn:hover { opacity: 1; transform: scale(1.15); }
+  .ctrl-btn svg { width: 22px; height: 22px; fill: white; }
+
+  .ctrl-spacer { flex: 1; }
+
+  /* Badge LIVE */
+  .live-badge {
+    background: var(--red);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    display: none;
+    align-items: center;
+    gap: 4px;
+  }
+  .live-badge.visible { display: flex; }
+  .live-dot {
+    width: 6px; height: 6px;
+    background: white;
+    border-radius: 50%;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* Tiempo */
+  #time-display {
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 0.5px;
+    display: none;
+    white-space: nowrap;
+  }
+
+  /* Volumen */
+  #vol-slider {
+    width: 70px;
+    accent-color: var(--gold);
+    cursor: pointer;
+  }
+
+  /* Quality badge */
+  .quality-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--gold);
+    border: 1px solid rgba(245,197,24,0.4);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  /* ── BOTÓN PLAY CENTRAL (antes de iniciar) ── */
+  #big-play {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 25;
+    cursor: pointer;
+    display: none;
+  }
+
+  #big-play .circle {
+    width: 70px; height: 70px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255,255,255,0.5);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  #big-play:hover .circle {
+    background: rgba(245,197,24,0.3);
+    border-color: var(--gold);
+    transform: scale(1.1);
+  }
+  #big-play .circle svg {
+    width: 28px; height: 28px;
+    fill: white;
+    margin-left: 4px;
+  }
+
+  /* ── HEADER TOP (logo + título) ── */
+  #top-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 30;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  #player-container:hover #top-bar,
+  #player-container.show-controls #top-bar {
+    opacity: 1;
+  }
+
+  #top-bar img {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,0.8));
+  }
+
+  #stream-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.85);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  }
+</style>
+</head>
+<body>
+
+<div id="player-container">
+
+  <!-- TOP BAR -->
+  <div id="top-bar">
+    <img src="https://i.imgur.com/dqvybW1.png" alt="GolStream">
+    <span id="stream-title">Cargando...</span>
+  </div>
+
+  <!-- LOADER -->
+  <div id="loader">
+    <img src="https://i.imgur.com/dqvybW1.png" alt="GolStream" class="loader-logo">
+    <div class="spinner"></div>
+    <div class="loader-text">Conectando stream...</div>
+  </div>
+
+  <!-- ERROR -->
+  <div id="error-screen">
+    <div class="error-icon">📡</div>
+    <div class="error-title">Sin señal</div>
+    <div class="error-msg">No se pudo conectar al stream. Verifica la URL o intenta con otra opción.</div>
+    <button class="btn-retry" onclick="initPlayer()">↺ Reintentar</button>
+  </div>
+
+  <!-- VIDEO NATIVO -->
+  <video id="video" playsinline></video>
+
+  <!-- IFRAME -->
+  <iframe id="iframe-player" allowfullscreen allow="autoplay; fullscreen"></iframe>
+
+  <!-- BIG PLAY (pausa) -->
+  <div id="big-play" onclick="togglePlay()">
+    <div class="circle">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </div>
+  </div>
+
+  <!-- CONTROLES -->
+  <div id="controls">
+    <div id="progress-wrap" onclick="seekTo(event)">
+      <div id="progress-fill"></div>
+    </div>
+    <div class="controls-row">
+      <!-- Play/Pause -->
+      <button class="ctrl-btn" id="btn-play" onclick="togglePlay()" title="Play/Pause">
+        <svg viewBox="0 0 24 24"><path id="play-icon-path" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+      </button>
+      <!-- Volumen -->
+      <button class="ctrl-btn" id="btn-mute" onclick="toggleMute()" title="Mute">
+        <svg viewBox="0 0 24 24"><path id="vol-icon-path" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+      </button>
+      <input type="range" id="vol-slider" min="0" max="1" step="0.05" value="1" oninput="setVolume(this.value)">
+      <!-- Spacer -->
+      <div class="ctrl-spacer"></div>
+      <!-- Live badge -->
+      <div class="live-badge" id="live-badge">
+        <div class="live-dot"></div>
+        EN VIVO
+      </div>
+      <!-- Tiempo (solo VOD) -->
+      <span id="time-display">0:00 / 0:00</span>
+      <!-- Quality -->
+      <span class="quality-badge" id="quality-badge">HD</span>
+      <!-- Fullscreen -->
+      <button class="ctrl-btn" onclick="toggleFullscreen()" title="Pantalla completa">
+        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  CONFIGURACIÓN — Edita aquí tu stream
+// ════════════════════════════════════════════════
+const CONFIG = {
+  // MODO: "hls" | "mp4" | "iframe"
+  mode: "hls",
+
+  // URL del stream según el modo:
+  // HLS   → URL de archivo .m3u8
+  // MP4   → URL directa de video
+  // iframe → URL de página embed (ej: iframe de otro sitio)
+  url: "https://TU_URL_AQUI",
+
+  // Título que aparece en la barra superior
+  title: "En Vivo",
+
+  // Mostrar badge LIVE (solo para streams en vivo)
+  isLive: true,
+};
+// ════════════════════════════════════════════════
+
+const video       = document.getElementById('video');
+const iframeEl    = document.getElementById('iframe-player');
+const loader      = document.getElementById('loader');
+const errorScreen = document.getElementById('error-screen');
+const bigPlay     = document.getElementById('big-play');
+const progressWrap= document.getElementById('progress-wrap');
+const progressFill= document.getElementById('progress-fill');
+const timeDisplay = document.getElementById('time-display');
+const liveBadge   = document.getElementById('live-badge');
+const qualityBadge= document.getElementById('quality-badge');
+const streamTitle = document.getElementById('stream-title');
+const playIconPath= document.getElementById('play-icon-path');
+const volIconPath = document.getElementById('vol-icon-path');
+
+let hlsInstance = null;
+let hideTimer   = null;
+
+function initPlayer() {
+  errorScreen.classList.remove('visible');
+  loader.classList.remove('hidden');
+  streamTitle.textContent = CONFIG.title;
+
+  if (CONFIG.isLive) liveBadge.classList.add('visible');
+
+  if (CONFIG.mode === 'iframe') {
+    loadIframe();
+  } else {
+    loadVideo();
+  }
+}
+
+// ── IFRAME MODE ──
+function loadIframe() {
+  iframeEl.src = CONFIG.url;
+  iframeEl.style.display = 'block';
+  // Ocultar loader después de un breve delay
+  setTimeout(hideLoader, 2000);
+}
+
+// ── VIDEO MODE (HLS + MP4) ──
+function loadVideo() {
+  video.style.display = 'block';
+
+  if (CONFIG.mode === 'hls') {
+    loadHLS();
+  } else {
+    loadMP4();
+  }
+
+  video.addEventListener('canplay', hideLoader, { once: true });
+  video.addEventListener('error',   showError,  { once: true });
+}
+
+function loadHLS() {
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+
+  if (Hls.isSupported()) {
+    hlsInstance = new Hls({
+      enableWorker: true,
+      lowLatencyMode: true,
+      backBufferLength: 90,
+    });
+    hlsInstance.loadSource(CONFIG.url);
+    hlsInstance.attachMedia(video);
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(() => {});
+      updateQualityBadge();
+    });
+    hlsInstance.on(Hls.Events.ERROR, (e, data) => {
+      if (data.fatal) showError();
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Safari nativo
+    video.src = CONFIG.url;
+    video.play().catch(() => {});
+  } else {
+    showError();
+  }
+}
+
+function loadMP4() {
+  video.src = CONFIG.url;
+  video.play().catch(() => {});
+  progressWrap.style.display = 'block';
+  timeDisplay.style.display  = 'block';
+  liveBadge.classList.remove('visible');
+  qualityBadge.textContent = 'MP4';
+  // Progreso
+  video.addEventListener('timeupdate', updateProgress);
+}
+
+function updateQualityBadge() {
+  if (!hlsInstance) return;
+  const levels = hlsInstance.levels;
+  if (!levels || levels.length === 0) return;
+  const cur = hlsInstance.currentLevel;
+  const h = levels[cur >= 0 ? cur : 0]?.height;
+  qualityBadge.textContent = h ? `${h}p` : 'HD';
+}
+
+// ── UI ──
+function hideLoader() {
+  loader.classList.add('hidden');
+  bigPlay.style.display = 'none';
+}
+
+function showError() {
+  loader.classList.add('hidden');
+  errorScreen.classList.add('visible');
+}
+
+function togglePlay() {
+  if (CONFIG.mode === 'iframe') return;
+  if (video.paused) {
+    video.play();
+    playIconPath.setAttribute('d', 'M6 19h4V5H6v14zm8-14v14h4V5h-4z'); // pause icon
+    bigPlay.style.display = 'none';
+  } else {
+    video.pause();
+    playIconPath.setAttribute('d', 'M8 5v14l11-7z'); // play icon
+    bigPlay.style.display = 'flex';
+  }
+}
+
+function toggleMute() {
+  video.muted = !video.muted;
+  updateVolIcon();
+}
+
+function setVolume(v) {
+  video.volume = v;
+  video.muted = (v == 0);
+  updateVolIcon();
+}
+
+function updateVolIcon() {
+  if (video.muted || video.volume === 0) {
+    volIconPath.setAttribute('d', 'M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z');
+  } else {
+    volIconPath.setAttribute('d', 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z');
+  }
+}
+
+function updateProgress() {
+  if (!video.duration) return;
+  const pct = (video.currentTime / video.duration) * 100;
+  progressFill.style.width = pct + '%';
+  timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+}
+
+function seekTo(e) {
+  if (!video.duration) return;
+  const rect = progressWrap.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  video.currentTime = pct * video.duration;
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60).toString().padStart(2, '0');
+  return `${m}:${sec}`;
+}
+
+function toggleFullscreen() {
+  const el = document.getElementById('player-container');
+  if (!document.fullscreenElement) {
+    el.requestFullscreen && el.requestFullscreen();
+  } else {
+    document.exitFullscreen && document.exitFullscreen();
+  }
+}
+
+// Auto-ocultar controles
+const container = document.getElementById('player-container');
+container.addEventListener('mousemove', () => {
+  container.classList.add('show-controls');
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => container.classList.remove('show-controls'), 3000);
+});
+
+// Touch devices
+container.addEventListener('touchstart', () => {
+  container.classList.toggle('show-controls');
+});
+
+// ── INICIAR ──
+window.addEventListener('load', initPlayer);
+</script>
+</body>
+</html>
