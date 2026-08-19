@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>APPTV24 - Smart TV Player</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- LIBRERÍAS DE DECODIFICACIÓN (MPEG-TS + HLS) -->
+  <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap');
+
+    body {
+      font-family: 'Montserrat', sans-serif;
+      user-select: none;
+      background-color: #080b12;
+      color: #ffffff;
+      overflow: hidden;
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #82c91e;
+      border-radius: 3px;
+    }
+
+    .item-active {
+      background: rgba(130, 201, 30, 0.15) !important;
+      border-left: 4px solid #82c91e;
+    }
+
+    .category-active {
+      color: #a3ee2c;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-btn-active {
+      color: #fbbf24;
+      font-weight: 700;
+      border-bottom: 2px solid #fbbf24;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between relative overflow-hidden bg-slate-950">
+
+  <!-- HEADER -->
+  <header id="app-header" class="z-30 bg-slate-900 border-b border-slate-800 px-6 py-2 flex items-center justify-between">
+    <div class="flex items-center space-x-6">
+      <nav class="flex items-center space-x-2 text-sm">
+        <button id="nav-home" onclick="switchView('home')" class="px-3 py-1.5 rounded nav-btn-active">Casa</button>
+        <button id="nav-tv" onclick="switchContentType('live')" class="px-3 py-1.5 rounded text-slate-300 hover:bg-slate-800">TV en vivo</button>
+        <button id="nav-vod" onclick="switchContentType('vod')" class="px-3 py-1.5 rounded text-slate-300 hover:bg-slate-800">Películas</button>
+        <button id="nav-series" onclick="switchContentType('series')" class="px-3 py-1.5 rounded text-slate-300 hover:bg-slate-800">Series</button>
+      </nav>
+
+      <div class="relative w-64">
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        <input type="text" id="search-input" onkeyup="filterItems()" placeholder="Buscar..." class="w-full bg-slate-950 border border-slate-800 rounded-full pl-8 pr-4 py-1 text-xs text-white focus:outline-none focus:border-lime-400">
+      </div>
+    </div>
+
+    <div class="flex items-center space-x-4 text-purple-400 text-lg">
+      <button onclick="openPlaylistModal()" title="Cargar Lista"><i class="fas fa-list-ul hover:text-white cursor-pointer"></i></button>
+      <button onclick="openPlaylistModal()" title="Configuración"><i class="fas fa-cog hover:text-white cursor-pointer"></i></button>
+    </div>
+  </header>
+
+  <!-- MAIN VIEW -->
+  <main class="flex-1 relative w-full h-full">
+
+    <!-- VISTA CASA -->
+    <section id="view-home" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-center p-6">
+      <div class="max-w-md">
+        <i class="fas fa-play-circle text-6xl text-lime-400 mb-4 animate-pulse"></i>
+        <h1 class="text-3xl font-extrabold text-white mb-2">Bienvenido a APPTV24</h1>
+        <p class="text-slate-400 text-sm mb-6">Selecciona una categoría en el menú superior para ver Canales, Películas o Series.</p>
+        <div class="flex justify-center gap-3">
+          <button onclick="switchContentType('live')" class="bg-lime-500 hover:bg-lime-400 text-black font-bold px-4 py-2 rounded-xl text-xs transition">TV en Vivo</button>
+          <button onclick="switchContentType('vod')" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition">Películas</button>
+          <button onclick="switchContentType('series')" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition">Series</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA REPRODUCTOR / CONTENIDO -->
+    <section id="view-player" class="hidden absolute inset-0 flex w-full h-full bg-slate-950">
+      
+      <!-- CATEGORÍAS -->
+      <div class="w-1/4 max-w-[240px] h-full border-r border-slate-800 bg-slate-900/60 flex flex-col">
+        <div class="p-3 bg-slate-900 border-b border-slate-800 font-bold text-xs text-slate-400" id="cat-header-title">CATEGORÍAS</div>
+        <div id="category-list" class="flex-1 overflow-y-auto divide-y divide-slate-800/40"></div>
+      </div>
+
+      <!-- LISTA DE ELEMENTOS -->
+      <div class="w-1/3 max-w-[300px] h-full border-r border-slate-800 bg-slate-950 flex flex-col">
+        <div class="p-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center text-xs font-bold text-slate-400">
+          <span id="content-header-title">CONTENIDO</span>
+          <span id="item-count" class="text-amber-400">0</span>
+        </div>
+        <div id="content-list" class="flex-1 overflow-y-auto divide-y divide-slate-900"></div>
+      </div>
+
+      <!-- REPRODUCTOR DE VIDEO -->
+      <div class="flex-1 h-full flex flex-col bg-slate-950 relative">
+        <div class="relative w-full h-2/3 bg-black flex items-center justify-center overflow-hidden border-b border-slate-800">
+          
+          <video id="tv-player" class="w-full h-full object-contain" autoplay playsinline></video>
+          
+          <div class="absolute top-4 right-4 bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded text-xs font-bold text-slate-200 border border-slate-700">
+            <span id="current-title-badge">Selecciona contenido</span>
+          </div>
+
+          <div id="player-overlay" onclick="forcePlay()" class="hidden absolute inset-0 bg-black/70 flex flex-col items-center justify-center cursor-pointer">
+            <i class="fas fa-play-circle text-6xl text-lime-400 mb-2 animate-bounce"></i>
+            <span class="text-xs font-bold text-white">Haz clic aquí para reproducir</span>
+          </div>
+        </div>
+
+        <div class="flex-1 p-4 bg-slate-900/40 flex flex-col justify-between">
+          <div>
+            <h2 id="current-item-title" class="text-xl font-bold text-white">Selecciona contenido</h2>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL CONFIGURACIÓN -->
+  <div id="modal-settings" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-slate-950 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-lg font-bold text-white"><i class="fas fa-list-ul text-lime-400"></i> Cargar Lista IPTV</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+      </div>
+
+      <form onsubmit="handleFormSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Host / URL</label>
+          <input type="text" id="iptv-url" placeholder="http://mundocorp.pro:55577" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Usuario</label>
+          <input type="text" id="iptv-user" placeholder="Usuario" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Contraseña</label>
+          <input type="password" id="iptv-pass" placeholder="••••••••" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white">
+        </div>
+        <button type="submit" class="w-full bg-lime-500 hover:bg-lime-400 text-black font-bold py-3 rounded-xl text-sm transition">Cargar Todo</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let hlsPlayer = null;
+    let mpegtsPlayer = null;
+
+    let store = {
+      live: { categories: [], items: [] },
+      vod:  { categories: [], items: [] },
+      series: { categories: [], items: [] }
+    };
+
+    let currentMode = 'live'; // 'live', 'vod', 'series'
+    let currentCategory = 'all';
+    let currentItem = null;
+
+    window.onload = function() {
+      switchView('home');
+      loadSavedConfig();
+    };
+
+    function switchView(viewName) {
+      const viewHome = document.getElementById('view-home');
+      const viewPlayer = document.getElementById('view-player');
+
+      if (viewName === 'home') {
+        viewHome.classList.remove('hidden');
+        viewPlayer.classList.add('hidden');
+        updateNavState('home');
+      } else {
+        viewPlayer.classList.remove('hidden');
+        viewHome.classList.add('hidden');
+      }
+    }
+
+    function updateNavState(activeNav) {
+      ['home', 'tv', 'vod', 'series'].forEach(nav => {
+        const btn = document.getElementById(`nav-${nav}`);
+        if (btn) {
+          if (nav === activeNav) {
+            btn.className = "px-3 py-1.5 rounded nav-btn-active";
+          } else {
+            btn.className = "px-3 py-1.5 rounded text-slate-300 hover:bg-slate-800";
+          }
+        }
+      });
+    }
+
+    function switchContentType(type) {
+      currentMode = type;
+      currentCategory = 'all';
+      switchView('player');
+      updateNavState(type === 'live' ? 'tv' : type);
+
+      renderCategories();
+      const items = store[currentMode].items;
+      renderItems(items);
+    }
+
+    function loadSavedConfig() {
+      const savedConfig = localStorage.getItem('iptv_config');
+      if (savedConfig) {
+        const config = JSON.parse(savedConfig);
+        document.getElementById('iptv-url').value = config.url || '';
+        document.getElementById('iptv-user').value = config.user || '';
+        document.getElementById('iptv-pass').value = config.pass || '';
+        connectToIPTV(config.url, config.user, config.pass);
+      }
+    }
+
+    async function smartFetch(targetUrl) {
+      try {
+        const response = await fetch(targetUrl);
+        if (response.ok) return await response.json();
+      } catch (e) {}
+
+      try {
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+        const res2 = await fetch(proxyUrl);
+        if (res2.ok) return await res2.json();
+      } catch (e) {}
+
+      const proxyUrl2 = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+      const res3 = await fetch(proxyUrl2);
+      return await res3.json();
+    }
+
+    async function handleFormSubmit(event) {
+      event.preventDefault();
+      const url = document.getElementById('iptv-url').value.trim();
+      const user = document.getElementById('iptv-user').value.trim();
+      const pass = document.getElementById('iptv-pass').value.trim();
+
+      const success = await connectToIPTV(url, user, pass);
+      if (success) {
+        localStorage.setItem('iptv_config', JSON.stringify({ url, user, pass }));
+        closeModal();
+      }
+    }
+
+    async function connectToIPTV(host, user, pass) {
+      try {
+        let baseUrl = host.replace(/\/$/, "");
+        if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+          baseUrl = 'http://' + baseUrl;
+        }
+
+        // Consultas en paralelo para Live, Películas y Series
+        const [
+          liveCats, liveStreams,
+          vodCats, vodStreams,
+          seriesCats, seriesStreams
+        ] = await Promise.all([
+          smartFetch(`${baseUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_live_categories`),
+          smartFetch(`${baseUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_live_streams`),
+          smartFetch(`${baseUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_vod_categories`),
+          smartFetch(`${baseUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_vod_streams`),
+          smartFetch(`${baseUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_series_categories`),
+          smartFetch(`${baseUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_series`)
+        ]);
+
+        // Procesar TV en Vivo
+        if (Array.isArray(liveStreams)) {
+          store.live.items = liveStreams.map((item, idx) => ({
+            id: item.num || (idx + 1),
+            name: item.name,
+            cat: item.category_id,
+            streamId: item.stream_id,
+            ext: 'ts',
+            baseUrl, user, pass, type: 'live'
+          }));
+          store.live.categories = buildCategories(liveCats, store.live.items);
+        }
+
+        // Procesar Películas
+        if (Array.isArray(vodStreams)) {
+          store.vod.items = vodStreams.map((item, idx) => ({
+            id: idx + 1,
+            name: item.name,
+            cat: item.category_id,
+            streamId: item.stream_id,
+            ext: item.container_extension || 'mp4',
+            baseUrl, user, pass, type: 'movie'
+          }));
+          store.vod.categories = buildCategories(vodCats, store.vod.items);
+        }
+
+        // Procesar Series
+        if (Array.isArray(seriesStreams)) {
+          store.series.items = seriesStreams.map((item, idx) => ({
+            id: idx + 1,
+            name: item.name,
+            cat: item.category_id,
+            seriesId: item.series_id,
+            baseUrl, user, pass, type: 'series'
+          }));
+          store.series.categories = buildCategories(seriesCats, store.series.items);
+        }
+
+        renderCategories();
+        renderItems(store[currentMode].items);
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function buildCategories(rawCats, items) {
+      let categories = [{ id: 'all', name: 'TODAS', count: items.length }];
+      if (Array.isArray(rawCats)) {
+        rawCats.forEach(cat => {
+          const count = items.filter(it => it.cat === cat.category_id).length;
+          if (count > 0) {
+            categories.push({ id: cat.category_id, name: cat.category_name, count });
+          }
+        });
+      }
+      return categories;
+    }
+
+    function renderCategories() {
+      const container = document.getElementById('category-list');
+      container.innerHTML = '';
+      const categories = store[currentMode].categories;
+
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = `w-full px-4 py-2.5 flex justify-between items-center text-xs text-slate-300 hover:bg-slate-800 transition ${cat.id === currentCategory ? 'category-active' : ''}`;
+        btn.onclick = () => filterCategory(cat.id);
+        btn.innerHTML = `<span class="truncate font-semibold">${cat.name}</span><span class="text-amber-400 font-mono text-[11px]">${cat.count}</span>`;
+        container.appendChild(btn);
+      });
+    }
+
+    function renderItems(itemList) {
+      const container = document.getElementById('content-list');
+      container.innerHTML = '';
+      document.getElementById('item-count').innerText = itemList.length;
+
+      itemList.forEach(item => {
+        const div = document.createElement('div');
+        const isActive = currentItem && item.id === currentItem.id;
+        div.className = `p-3 flex items-center space-x-3 cursor-pointer hover:bg-slate-800 transition text-xs ${isActive ? 'item-active' : ''}`;
+        div.onclick = () => playMedia(item);
+        
+        let icon = 'fa-tv';
+        if (currentMode === 'vod') icon = 'fa-film';
+        if (currentMode === 'series') icon = 'fa-photo-video';
+
+        div.innerHTML = `
+          <span class="w-8 font-mono text-slate-400 text-right">${item.id}</span>
+          <i class="fas ${icon} text-slate-400"></i>
+          <span class="font-bold text-slate-200 truncate flex-1">${item.name}</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function filterCategory(catId) {
+      currentCategory = catId;
+      renderCategories();
+      const allItems = store[currentMode].items;
+      const filtered = catId === 'all' ? allItems : allItems.filter(c => c.cat === catId);
+      renderItems(filtered);
+    }
+
+    function filterItems() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      const allItems = store[currentMode].items;
+      const filtered = allItems.filter(c => c.name.toLowerCase().includes(q));
+      renderItems(filtered);
+    }
+
+    function destroyPlayers() {
+      if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
+      if (mpegtsPlayer) { mpegtsPlayer.destroy(); mpegtsPlayer = null; }
+    }
+
+    function playMedia(item) {
+      currentItem = item;
+      const video = document.getElementById('tv-player');
+      const overlay = document.getElementById('player-overlay');
+      overlay.classList.add('hidden');
+
+      document.getElementById('current-title-badge').innerText = `${item.id} | ${item.name}`;
+      document.getElementById('current-item-title').innerText = item.name;
+
+      destroyPlayers();
+
+      let mediaUrl = '';
+      if (item.type === 'live') {
+        mediaUrl = `${item.baseUrl}/live/${item.user}/${item.pass}/${item.streamId}.ts`;
+        const m3u8Url = `${item.baseUrl}/live/${item.user}/${item.pass}/${item.streamId}.m3u8`;
+
+        if (mpegts.isSupported()) {
+          try {
+            mpegtsPlayer = mpegts.createPlayer({ type: 'mse', isLive: true, url: mediaUrl });
+            mpegtsPlayer.attachMediaElement(video);
+            mpegtsPlayer.load();
+            mpegtsPlayer.play().catch(() => overlay.classList.remove('hidden'));
+            return;
+          } catch(e){}
+        }
+
+        if (Hls.isSupported()) {
+          hlsPlayer = new Hls({ enableWorker: true });
+          hlsPlayer.loadSource(m3u8Url);
+          hlsPlayer.attachMedia(video);
+          hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => overlay.classList.remove('hidden')));
+          return;
+        }
+      } else if (item.type === 'movie') {
+        mediaUrl = `${item.baseUrl}/movie/${item.user}/${item.pass}/${item.streamId}.${item.ext}`;
+        video.src = mediaUrl;
+        video.play().catch(() => overlay.classList.remove('hidden'));
+      }
+    }
+
+    function forcePlay() {
+      const video = document.getElementById('tv-player');
+      document.getElementById('player-overlay').classList.add('hidden');
+      video.play();
+    }
+
+    function openPlaylistModal() { document.getElementById('modal-settings').classList.remove('hidden'); }
+    function closeModal() { document.getElementById('modal-settings').classList.add('hidden'); }
+  </script>
+</body>
+</html>
