@@ -1,0 +1,202 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+#pl{--bg:#0a0f0d;--panel:#121a16;--panel2:#18231d;--text:#eaf2ee;--muted:#8ea399;--green:#39ff7a;--line:#1f2c26;--display:'Archivo',Arial,sans-serif;--body:'Inter',system-ui,sans-serif;position:relative;width:100%;max-width:100%;overflow:hidden;font-family:var(--body);background-color:var(--bg);background-image:linear-gradient(rgba(57,255,122,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(57,255,122,.035) 1px,transparent 1px);background-size:44px 44px;color:var(--text);line-height:1.6;text-align:left;border-radius:14px}
+#pl *,#pl *:before,#pl *:after{box-sizing:border-box;margin:0;padding:0}
+#pl [hidden]{display:none!important}
+#pl a{color:inherit;text-decoration:none}
+#pl :focus-visible{outline:3px solid var(--green);outline-offset:3px}
+#pl .wrap{width:100%;max-width:960px;margin:0 auto;padding:0 16px}
+#pl .hero{position:relative;overflow:hidden;text-align:center;padding:38px 0 0;background:radial-gradient(circle at 80% 12%,rgba(57,255,122,.22),transparent 48%),radial-gradient(circle at 10% 35%,rgba(0,190,120,.15),transparent 38%),#0a0f0d}
+#pl .hero:after{content:"";position:absolute;bottom:-155px;left:50%;width:310px;height:310px;border:2px solid rgba(57,255,122,.15);border-radius:50%;transform:translateX(-50%)}
+#pl .orb{position:absolute;border-radius:50%;filter:blur(65px);pointer-events:none;background:rgba(57,255,122,.15);width:220px;height:220px}
+#pl .orb.one{top:20px;left:-100px}
+#pl .orb.two{right:-90px;bottom:10px;background:rgba(0,200,160,.15)}
+#pl .hero-inner{position:relative;z-index:1}
+#pl .brand{font-size:.82rem;color:#b6c8bd;margin-bottom:28px}
+#pl .app-icon{width:88px;height:88px;border-radius:21px;border:2px solid var(--green);background:var(--panel2);display:grid;place-items:center;margin:auto;box-shadow:0 0 30px rgba(57,255,122,.35);font-size:48px}
+#pl h1.title{font:900 clamp(2.4rem,9vw,4.4rem)/1 var(--display);letter-spacing:-2px;margin:18px 0 12px;padding:0;border:0;background:linear-gradient(100deg,#eaf2ee 10%,var(--green) 55%,#eaf2ee 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:plShine 7s linear infinite}
+#pl .tagline{max-width:540px;margin:auto;color:#d2ddd6;font-size:.98rem}
+#pl .download{display:inline-flex;align-items:center;justify-content:center;margin-top:25px;padding:14px 25px;border-radius:12px;background:var(--green);color:#04100a;font-weight:800;box-shadow:0 0 28px rgba(57,255,122,.3);transition:transform .2s}
+#pl .download:hover{transform:translateY(-3px)}
+#pl .pending{display:block;margin-top:10px;color:#ffcf78;font-size:.8rem}
+#pl .meta{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 20px;margin:15px auto 34px;font-size:.78rem;color:#c5d2ca}
+#pl .ticker{position:relative;z-index:1;overflow:hidden;background:#070b09;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0}
+#pl .track{display:flex;width:max-content;white-space:nowrap;animation:plMarquee 28s linear infinite}
+#pl .track span{padding:0 22px;color:var(--muted);font-size:.82rem}
+#pl .track span:after{content:"\26BD";margin-left:40px}
+#pl .sec{padding:44px 0 4px}
+#pl h2.h{font:800 clamp(1.45rem,5vw,2rem)/1.15 var(--display);margin:0 0 20px;padding:0;border:0;color:var(--text)}
+#pl h2.h:after{content:"";display:block;width:50px;height:3px;margin-top:11px;border-radius:5px;background:var(--green);box-shadow:0 0 12px var(--green)}
+#pl .shots{display:flex;gap:12px;overflow-x:auto;padding:0 0 10px;scroll-snap-type:x mandatory}
+#pl .shot{flex:0 0 150px;aspect-ratio:9/17;border:1px solid var(--line);border-radius:15px;background:linear-gradient(145deg,#15251b,#101713);display:grid;place-items:center;align-content:center;gap:10px;color:var(--muted);font-size:.78rem;scroll-snap-align:start}
+#pl .shot b{font-size:2rem;color:var(--green);opacity:.65}
+#pl img.shot{object-fit:cover;max-width:none}
+#pl .features{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#pl .feature{padding:16px;border:1px solid var(--line);border-radius:13px;background:rgba(18,26,22,.82);transition:.2s}
+#pl .feature:hover{border-color:var(--green);transform:translateY(-3px);box-shadow:0 0 18px rgba(57,255,122,.12)}
+#pl .feature strong{display:block;font-size:.9rem}
+#pl .feature p{font-size:.82rem;color:var(--muted);line-height:1.45}
+#pl .steps{list-style:none;display:grid;gap:16px;margin:0;padding:0}
+#pl .steps li{display:grid;grid-template-columns:38px 1fr;gap:13px;align-items:start;list-style:none;margin:0}
+#pl .num{width:36px;height:36px;border:1px solid var(--green);border-radius:50%;display:grid;place-items:center;color:var(--green);font-weight:800;box-shadow:0 0 13px rgba(57,255,122,.2)}
+#pl .steps strong{display:block}
+#pl .steps p{font-size:.86rem;color:var(--muted)}
+#pl details{border-top:1px solid var(--line);padding:15px 0}
+#pl details:last-child{border-bottom:1px solid var(--line)}
+#pl summary{cursor:pointer;font-weight:600;display:flex;justify-content:space-between;gap:12px;list-style:none}
+#pl summary::-webkit-details-marker{display:none}
+#pl summary:after{content:"+";color:var(--green);font-size:1.2rem}
+#pl details[open] summary:after{content:"\2212"}
+#pl details p{margin-top:9px;color:var(--muted);font-size:.88rem}
+#pl .foot-bar{margin-top:44px;background:#070b09;border-top:1px solid var(--line);padding:24px 0;color:var(--muted);font-size:.82rem}
+#pl .foot{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+#pl .social{display:flex;gap:15px}
+#pl .social a{color:var(--text)}
+#pl .social a:hover{color:var(--green)}
+@keyframes plMarquee{to{transform:translateX(-50%)}}
+@keyframes plShine{to{background-position:200% center}}
+@media(min-width:700px){#pl .shot{flex-basis:190px}#pl .features{gap:14px}#pl .hero{padding-top:48px}}
+@media(max-width:480px){#pl .feature{padding:13px}#pl .meta{gap:7px 12px;font-size:.7rem}#pl .shot{flex-basis:140px}}
+@media(prefers-reduced-motion:reduce){#pl *,#pl *:before,#pl *:after{animation:none!important;transition:none!important}}
+</style>
+
+<div id="pl">
+  <header class="hero">
+    <span class="orb one"></span><span class="orb two"></span>
+    <div class="wrap hero-inner">
+      <p class="brand" id="pl-brand"></p>
+      <div class="app-icon" id="pl-icon" aria-label="Icono de la aplicación"></div>
+      <h1 class="title" id="pl-name"></h1>
+      <p class="tagline" id="pl-tagline"></p>
+      <a class="download" id="pl-btn" href="#" rel="noopener">Descargar APK</a>
+      <span class="pending" id="pl-pending" hidden>El enlace de descarga todavía no está configurado.</span>
+      <div class="meta" id="pl-meta"></div>
+    </div>
+    <div class="ticker"><div class="track" id="pl-track"></div></div>
+  </header>
+
+  <div class="wrap">
+    <div class="sec">
+      <h2 class="h">Échale un vistazo</h2>
+      <div class="shots" id="pl-shots"></div>
+    </div>
+    <div class="sec">
+      <h2 class="h">Qué vas a encontrar</h2>
+      <div class="features" id="pl-features"></div>
+    </div>
+    <div class="sec">
+      <h2 class="h">Cómo instalarla</h2>
+      <ol class="steps">
+        <li><span class="num">1</span><div><strong>Descarga el archivo</strong><p>Toca el botón «Descargar APK» y espera a que termine.</p></div></li>
+        <li><span class="num">2</span><div><strong>Permite la instalación</strong><p>Si Android lo solicita, habilita la instalación de aplicaciones desde esta fuente.</p></div></li>
+        <li><span class="num">3</span><div><strong>Abre el archivo e instala</strong><p>Busca el APK en la carpeta Descargas, tócalo y sigue las instrucciones.</p></div></li>
+        <li><span class="num">4</span><div><strong>¡Listo!</strong><p>Abre la aplicación desde la pantalla de inicio.</p></div></li>
+      </ol>
+    </div>
+    <div class="sec">
+      <h2 class="h">Preguntas frecuentes</h2>
+      <div id="pl-faq"></div>
+    </div>
+  </div>
+
+  <div class="foot-bar">
+    <div class="wrap foot">
+      <span id="pl-copy"></span>
+      <nav class="social" id="pl-social" aria-label="Redes sociales"></nav>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========= PERSONALIZA LOS DATOS EN ESTE BLOQUE ========= */
+var CONFIG = {
+  brand: "La Casa del Gol",
+  appName: "Pelota Libre",
+  tagline: "Tu fútbol en vivo, en tu celular. Sin complicaciones.",
+  icon: "",
+  apkUrl: "https://tu-enlace-de-descarga.com/app.apk",
+  version: "1.0.0",
+  size: "25 MB",
+  android: "Android 5.0 o superior",
+  updated: "Noviembre 2026",
+  screenshots: [],
+  features: [
+    ["Partidos en vivo", "Información de partidos y competiciones que te interesan."],
+    ["Reproductor fluido", "Una experiencia sencilla y cómoda para el usuario."],
+    ["Ligero", "Diseño pensado para una navegación rápida."],
+    ["Actualizaciones", "Novedades y mejoras de la aplicación."]
+  ],
+  faq: [
+    ["¿Es gratis?", "Edita esta respuesta con la información real de tu aplicación."],
+    ["¿Cómo instalo el APK?", "Descarga el archivo, permite la instalación desde tu navegador o gestor de archivos y ábrelo."],
+    ["¿Qué versión de Android necesito?", "Consulta el requisito mínimo indicado en los detalles de la aplicación."],
+    ["¿Hay versión para iPhone?", "Edita esta respuesta según la disponibilidad real de tu aplicación."]
+  ],
+  social: [
+    ["WhatsApp", "https://chat.whatsapp.com/tu-grupo"],
+    ["Facebook", "https://facebook.com/tu-pagina"]
+  ]
+};
+/* ========================================================= */
+(function () {
+  var BALL = "\u26BD";
+  function $(id) { return document.getElementById(id); }
+  function esc(v) {
+    return String(v).split("\x26").join("\x26amp;").split("\x3C").join("\x26lt;").split("\x3E").join("\x26gt;").split('"').join("\x26quot;");
+  }
+
+  $("pl-brand").textContent = CONFIG.brand;
+  $("pl-name").textContent = CONFIG.appName;
+  $("pl-tagline").textContent = CONFIG.tagline;
+  $("pl-icon").textContent = BALL;
+
+  if (CONFIG.icon.trim()) {
+    var img = document.createElement("img");
+    img.src = CONFIG.icon;
+    img.alt = "Icono de " + CONFIG.appName;
+    img.style.cssText = "width:100%;height:100%;object-fit:cover;border-radius:inherit";
+    img.onerror = function () { img.remove(); $("pl-icon").textContent = BALL; };
+    $("pl-icon").textContent = "";
+    $("pl-icon").appendChild(img);
+  }
+
+  var placeholder = !CONFIG.apkUrl.trim() || CONFIG.apkUrl === "https://tu-enlace-de-descarga.com/app.apk";
+  if (placeholder) {
+    $("pl-btn").hidden = true;
+    $("pl-pending").hidden = false;
+  } else {
+    $("pl-btn").href = CONFIG.apkUrl;
+    $("pl-btn").setAttribute("download", "");
+  }
+
+  $("pl-meta").innerHTML = [
+    ["Versión", CONFIG.version],
+    ["Tamaño", CONFIG.size],
+    ["Requiere", CONFIG.android],
+    ["Actualizada", CONFIG.updated]
+  ].map(function (p) { return "<span><b>" + esc(p[0]) + ":</b> " + esc(p[1]) + "</span>"; }).join("");
+
+  var shots = CONFIG.screenshots.length ? CONFIG.screenshots : ["", "", "", ""];
+  $("pl-shots").innerHTML = shots.map(function (u, i) {
+    return u
+      ? '<img class="shot" src="' + esc(u) + '" alt="Captura ' + (i + 1) + '" loading="lazy">'
+      : '<div class="shot"><b>' + BALL + "</b>Captura " + (i + 1) + "</div>";
+  }).join("");
+
+  $("pl-features").innerHTML = CONFIG.features.map(function (f) {
+    return '<article class="feature"><strong>' + esc(f[0]) + "</strong><p>" + esc(f[1]) + "</p></article>";
+  }).join("");
+
+  $("pl-faq").innerHTML = CONFIG.faq.map(function (q) {
+    return "<details><summary>" + esc(q[0]) + "</summary><p>" + esc(q[1]) + "</p></details>";
+  }).join("");
+
+  $("pl-social").innerHTML = CONFIG.social.map(function (s) {
+    return '<a href="' + esc(s[1]) + '" target="_blank" rel="noopener noreferrer">' + esc(s[0]) + "</a>";
+  }).join("");
+
+  var t = CONFIG.features.map(function (f) { return "<span>" + esc(f[0]) + "</span>"; }).join("");
+  $("pl-track").innerHTML = t + t + t + t;
+  $("pl-copy").textContent = "\u00A9 " + new Date().getFullYear() + " " + CONFIG.brand;
+})();
+</script>
